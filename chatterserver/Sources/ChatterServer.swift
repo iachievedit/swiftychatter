@@ -21,8 +21,10 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+
 import swiftysockets
 import Foundation
+import JSON
 
 class ChatterServer {
 
@@ -63,7 +65,8 @@ class ChatterServer {
         do {
           if let s = try client.receiveString(untilDelimiter: "\n") {
             print("Received from client \(clientId):  \(s)", terminator:"")
-            self.broadcastMessage(s, except:client)
+            let payload = self.handleMessage(s)
+            self.broadcastMessage(payload)
           }
         } catch let error {
           print ("Client \(clientId) disconnected:  \(error)")
@@ -80,10 +83,18 @@ class ChatterServer {
     connectedClients = connectedClients.filter(){$0 !== client}
   }
 
-  private func broadcastMessage(message:String, except:TCPClientSocket) {
-    for client in connectedClients where client !== except {
+  private func handleMessage(message:String) -> String {
+    let json        = try! JSONParser.parse(message)
+    let messageType = json["name"]
+    let msgPay      = json["message"]!.stringValue!
+    return msgPay
+  }
+
+  private func broadcastMessage(message:String) {
+    for client in connectedClients {
       do {
-        try client.sendString(message)
+        print("Broadcast to client")
+        try client.sendString("\(message)\n")
         try client.flush()
       } catch {
         // 

@@ -1,3 +1,27 @@
+// ChatterServer.swift
+//
+// The MIT License (MIT)
+//
+// Copyright (c) 2016 iAchieved.it LLC
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
 import Foundation
 import Glibc
 import JSON
@@ -6,16 +30,16 @@ protocol Serializable {
   func serialize() -> String
 }
 
-class ChatterMessage {
+public class ChatterMessage {
 
   var messageName:String = ""
   
-  init() {
+  public init() {
   }
   
 }
 
-class NickMessage : ChatterMessage, Serializable, CustomStringConvertible {
+public class NickMessage : ChatterMessage, Serializable, CustomStringConvertible {
 
   var nickname:String
 
@@ -33,13 +57,13 @@ class NickMessage : ChatterMessage, Serializable, CustomStringConvertible {
     return json.serialize(DefaultJSONSerializer())
   }
 
-  var description:String {
+  public var description:String {
     return self.serialize()
   }
 
 }
 
-class ChannelMessage : ChatterMessage, Serializable, CustomStringConvertible {
+public class ChannelMessage : ChatterMessage, Serializable, CustomStringConvertible {
 
   var channel:String
 
@@ -58,23 +82,23 @@ class ChannelMessage : ChatterMessage, Serializable, CustomStringConvertible {
     return json.serialize(DefaultJSONSerializer())
   }
 
-  var description:String {
+  public var description:String {
     return self.serialize()
   }
   
 }
 
-class SendMessage : ChatterMessage, Serializable, CustomStringConvertible {
+public class SendMessage : ChatterMessage, Serializable, CustomStringConvertible {
 
   var message:String
 
-  init(message:String) {
+  public init(message:String) {
     self.message = message
     super.init()
     super.messageName = "send"
   }
 
-  func serialize() -> String {
+  public func serialize() -> String {
     let json:JSON = [
       "name":JSON.from(self.messageName),
       "message":JSON.from(self.message)
@@ -82,7 +106,7 @@ class SendMessage : ChatterMessage, Serializable, CustomStringConvertible {
     return json.serialize(DefaultJSONSerializer())
   }
 
-  var description:String {
+  public var description:String {
     return self.serialize()
   }
   
