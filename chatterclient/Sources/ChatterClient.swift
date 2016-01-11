@@ -1,16 +1,13 @@
 import chattercommon
 import Foundation
 import Glibc
-import Rainbow
-import CNCURSES
+import JSON
 
 enum CommandType:String {
 case Invalid
 case None
 case Send
-case Channel = "/channel"
-case Help    = "/help" 
-case Connect = "/connect"
+case Room    = "/room"
 case Nick    = "/nick"
 case Quit    = "/quit"
 }
@@ -39,14 +36,14 @@ class ChatterClient {
     let receiveThread = NSThread(){
       while true {
         let received = self.serverIf!.receive()
-        self.userIf.displayChatMessage(received)
+        self.handleReceivedMessage(received)
+
       }
     }
     receiveThread.start()
     
     let readThread = NSThread(){
 
-      //print("Type /help for help".green)
       self.displayPrompt()
 
       while true {
@@ -79,16 +76,12 @@ class ChatterClient {
     switch tokens[0] {
     case CommandType.Quit.rawValue:
       commandType = .Quit
-    case CommandType.Help.rawValue:
-      commandType = .Help
-    case CommandType.Connect.rawValue:
-      commandType = .Connect
-    case CommandType.Channel.rawValue:
+    case CommandType.Room.rawValue:
       guard tokens.count == 2 else {
         return Command(type:CommandType.Invalid,
                        data:"Too few arguments for \(tokens[0])")
       }
-      commandType = .Channel
+      commandType = .Room
       commandData = tokens[1]
     case CommandType.Nick.rawValue:
       guard tokens.count == 2 else {
@@ -113,14 +106,10 @@ class ChatterClient {
     case .Quit:
       self.userIf.end()
       exit(0)
-    case .Help:
-      print("Implement help")
     case .Nick:
-      print("Implement nick")
-    case .Channel:
-      print("Implement channel")
-    case .Connect:
-      print("Implement connect")
+      doNick(command)
+    case .Room:
+      doRoom(command)
     case .Send:
       doSend(command)
     case .Invalid:
@@ -130,8 +119,52 @@ class ChatterClient {
     }
   }
 
-  func doSend(command:Command) {
-    let message = SendMessage(message:command.data)
+  func doNick(command:Command) {
+    let message = NickMessage(nick:command.data)
     self.serverIf!.send(message.serialize())
+  }
+
+  func doRoom(command:Command) {
+    let message = RoomMessage(room:command.data)
+    self.serverIf!.send(message.serialize())
+  }
+
+  func doSend(command:Command) {
+    let message = SayMessage(message:command.data)
+    self.serverIf!.send(message.serialize())
+  }
+
+  func handleReceivedMessage(message:String) {
+    do {
+      let json = try JSONParser.parse(message)
+      guard json != nil else {
+        return
+      }
+
+      if let messageType = json["msgtype"]?.stringValue {
+        if let msgtype = ChatterMessageType(rawValue:messageType) {
+        switch msgtype {
+        case .Say:
+          self.handleSayMessage(json)
+        case .Nick:
+          break
+        case .Enter:
+          break
+        case .Room:
+          break
+        }
+        }
+      }
+    } catch {
+      // don't care
+    }
+  }
+
+  func handleSayMessage(json:JSON) {
+    if let data = json["data"],
+       let nick = data["nick"]?.stringValue!,
+       let message = data["message"]?.stringValue! {
+      self.userIf.displayChatMessage(nick, message:message)
+    }
   }
 }

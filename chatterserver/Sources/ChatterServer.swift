@@ -23,8 +23,10 @@
 // SOFTWARE.
 
 import swiftysockets
+import chattercommon
 import Foundation
 import JSON
+import Rainbow
 
 class ChatterServer {
 
@@ -44,7 +46,8 @@ class ChatterServer {
   func start() {
     while true {
       do {
-        let client = try server!.accept()
+        let clientSocket = try server!.accept()
+        let client       = ChatterClient(socket:clientSocket)
         self.addClient(client)
       } catch let error {
         print(error)
@@ -52,24 +55,24 @@ class ChatterServer {
     }
   }
 
-  private var connectedClients:[TCPClientSocket] = []
+  private var connectedClients:[ChatterClient] = []
   private var connectionCount = 0
-  private func addClient(client:TCPClientSocket) {
+  private func addClient(client:ChatterClient) {
     self.connectionCount += 1
     let handlerThread = NSThread(){
-      let clientId = self.connectionCount
+      client.id = self.connectionCount
       
-      print("Client \(clientId) connected")
+      print("Client \(client.id) connected")
       
       while true {
         do {
-          if let s = try client.receiveString(untilDelimiter: "\n") {
-            print("Received from client \(clientId):  \(s)", terminator:"")
-            let payload = self.handleMessage(s)
-            self.broadcastMessage(payload)
+          if let s = try client.socket.receiveString(untilDelimiter: "\n") {
+            print("Received from client \(client.id):  \(s)", terminator:"")
+            self.handleMessage(s, fromClient:client)
+
           }
         } catch let error {
-          print ("Client \(clientId) disconnected:  \(error)")
+          print ("Client \(client.id) disconnected:  \(error)")
           self.removeClient(client)
           return
         }
@@ -79,26 +82,65 @@ class ChatterServer {
     connectedClients.append(client)
   }
 
-  private func removeClient(client:TCPClientSocket) {
+  private func removeClient(client:ChatterClient) {
     connectedClients = connectedClients.filter(){$0 !== client}
   }
 
-  private func handleMessage(message:String) -> String {
-    let json        = try! JSONParser.parse(message)
-    let messageType = json["name"]
-    let msgPay      = json["message"]!.stringValue!
-    return msgPay
+  private func handleMessage(message:String, fromClient:ChatterClient) {
+    do {
+      let json = try JSONParser.parse(message)
+      guard json != nil else {
+        return
+      }
+      
+      let messageType = json["msgtype"]!.stringValue!
+      switch messageType {
+      case "say":
+        self.handleSayMessage(json, from:fromClient)
+      case "nick":
+        self.handleNickMessage(json, fromClient:fromClient)
+      case "room":
+        self.handleRoomMessage(json, from:fromClient)
+      default:
+        break
+      }
+    } catch {
+      return
+    }
   }
 
-  private func broadcastMessage(message:String) {
-    for client in connectedClients {
-      do {
-        print("Broadcast to client")
-        try client.sendString("\(message)\n")
-        try client.flush()
-      } catch {
-        // 
-      }
+  private func handleSayMessage(json:JSON, from client:ChatterClient) {
+    if let data    = json["data"],
+       let message = data["message"]?.stringValue {
+      let say     = SayMessage(message:message, nick:client.nick)
+      self.broadcastSayMessage(say, from:client)
+    } else {
+      print("Unable to parse client say message".red)
+    }
+  }
+
+  private func handleNickMessage(json:JSON, fromClient:ChatterClient) {
+    if let data = json["data"],
+       let nick = data["nick"]?.stringValue {
+      fromClient.nick = nick
+    } else {
+      print("Unable to parse client nick message".red)
+    }
+  }
+
+  private func handleRoomMessage(json:JSON, from client:ChatterClient) {
+    if let data = json["data"],
+       let room = data["room"]?.stringValue {
+      client.room = room
+    } else {
+      print("Unable to parse client room message".red)
+    }
+  }
+
+  private func broadcastSayMessage(say:SayMessage, from client:ChatterClient) {
+    for c in connectedClients where c.room == client.room {
+      print("Broadcast to client")
+      c.sendMessage(say)
     }
   }
 

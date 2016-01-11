@@ -26,82 +26,61 @@ import Foundation
 import Glibc
 import JSON
 
-protocol Serializable {
+public enum ChatterMessageType:String {
+       case Say   = "say"
+       case Nick  = "nick"
+       case Enter = "enter"
+       case Room  = "room"
+       }
+
+public protocol ChatterMessage : CustomStringConvertible {
+  var msgtype:String { get }
   func serialize() -> String
 }
 
-public class ChatterMessage {
+// Client-originated messages
+public class NickMessage : ChatterMessage {
 
-  var messageName:String = ""
+  public let msgtype = "nick"
   
-  public init() {
-  }
-  
-}
+  var nick:String
 
-public class NickMessage : ChatterMessage, Serializable, CustomStringConvertible {
-
-  var nickname:String
-
-  init(nickname:String) {
-    self.nickname = nickname
-    super.init()
-    super.messageName = "nick"
-  }
-
-  func serialize() -> String {
-    let json:JSON = [
-      "name":JSON.from(self.messageName),
-      "nickname":JSON.from(self.nickname)
-    ]
-    return json.serialize(DefaultJSONSerializer())
-  }
-
-  public var description:String {
-    return self.serialize()
-  }
-
-}
-
-public class ChannelMessage : ChatterMessage, Serializable, CustomStringConvertible {
-
-  var channel:String
-
-  init(channel:String) {
-    self.channel = channel
-    super.init()
-    super.messageName = "channel"
-
-  }
-
-  func serialize() -> String {
-    let json:JSON = [
-      "name":JSON.from(self.messageName),
-      "channel":JSON.from(self.channel)
-    ]
-    return json.serialize(DefaultJSONSerializer())
-  }
-
-  public var description:String {
-    return self.serialize()
-  }
-  
-}
-
-public class SendMessage : ChatterMessage, Serializable, CustomStringConvertible {
-
-  var message:String
-
-  public init(message:String) {
-    self.message = message
-    super.init()
-    super.messageName = "send"
+  public init(nick:String) {
+    self.nick = nick
   }
 
   public func serialize() -> String {
     let json:JSON = [
-      "name":JSON.from(self.messageName),
-      "message":JSON.from(self.message)
+      "msgtype":JSON.from(self.msgtype),
+      "data":[
+        "nick":JSON.from(self.nick)
+      ]
+    ]
+    return json.serialize(DefaultJSONSerializer())
+  }
+
+  public var description:String {
+    return self.serialize()
+  }
+
+}
+
+public class RoomMessage : ChatterMessage {
+
+  public let msgtype = "room"
+
+  var room:String
+
+  public init(room:String) {
+    self.room = room
+  }
+
+  public func serialize() -> String {
+    let json:JSON = [
+      "msgtype":JSON.from(self.msgtype),
+      "data":[
+        "room":JSON.from(self.room)
+      ]
     ]
     return json.serialize(DefaultJSONSerializer())
   }
@@ -110,4 +89,60 @@ public class SendMessage : ChatterMessage, Serializable, CustomStringConvertible
     return self.serialize()
   }
   
+}
+
+public class SayMessage : ChatterMessage {
+
+  public let msgtype = "say"
+  var message:String
+  var nick:String      // Only used by the server
+
+  public init(message:String, nick:String = "") {
+    self.message = message
+    self.nick    = nick
+  }
+
+  public func serialize() -> String {
+    let json:JSON = [
+      "msgtype":JSON.from(self.msgtype),
+      "data":[
+        "message":JSON.from(self.message),
+        "nick":JSON.from(self.nick)
+      ]
+    ]
+    return json.serialize(DefaultJSONSerializer())
+  }
+
+  public var description:String {
+    return self.serialize()
+  }
+  
+}
+
+public class EnterMessage : ChatterMessage {
+
+  public let msgtype = "enter"
+  var nick:String
+  var room:String
+
+  public init(nick:String, room:String) {
+    self.nick = nick
+    self.room = room
+  }
+
+  public func serialize() -> String {
+    let json:JSON = [
+      "msgtype":JSON.from(self.msgtype),
+      "data":[
+        "nick":JSON.from(self.nick),
+        "room":JSON.from(self.room),
+      ]
+    ]
+    return json.serialize(DefaultJSONSerializer())
+  }
+
+  public var description:String {
+    return self.serialize()
+  }
+
 }

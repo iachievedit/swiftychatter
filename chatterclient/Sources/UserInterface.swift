@@ -7,7 +7,7 @@ protocol UserInterface {
 
   func displayPrompt(prompt:String)
 
-  func displayChatMessage(message:String)
+  func displayChatMessage(nick:String, message:String)
 
   func displayErrorMessage(message:String)
 
@@ -28,7 +28,8 @@ class CursesInterface : UserInterface {
   var curx:Int32 = 0
 
   let errorLine:Int32  = 20
-  let promptLine:Int32 = 21
+  let statusLine:Int32 = 21
+  let promptLine:Int32 = 22
 
   private var liny:Int32 = 0
   init() {
@@ -43,11 +44,15 @@ class CursesInterface : UserInterface {
     refresh()
   }
 
-  func displayChatMessage(message:String) {
+  func displayStatusBar() {
+  }
+
+  func displayChatMessage(nick:String, message:String) {
+    let displayString = "\(nick):  \(message)"
     let lock = NSLock()
     lock.lock()
     move(liny, 0); liny += 1
-    addstr(message)
+    addstr(displayString)
     move(promptLine,curx)
     refresh()
     lock.unlock()
