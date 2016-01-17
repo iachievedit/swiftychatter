@@ -1,6 +1,29 @@
+// UserInterface.swift
+//
+// The MIT License (MIT)
+//
+// Copyright (c) 2016 iAchieved.it LLC
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
 import Foundation
 import Glibc
-import Rainbow
 import CNCURSES
 
 protocol UserInterface {
@@ -24,12 +47,12 @@ class CursesInterface : UserInterface {
   let backspace:Character = Character(UnicodeScalar(127))
 
   // Ncurses screen positions
-  var cury:Int32 = 0
-  var curx:Int32 = 0
+  var cury:Int32     = 0
+  var curx:Int32     = 0
+  var inputCol:Int32 = 0
 
-  let errorLine:Int32  = 20
-  let statusLine:Int32 = 21
-  let promptLine:Int32 = 22
+  let errorLine:Int32    = 21
+  let promptLine:Int32   = 22
 
   private var liny:Int32 = 0
   init() {
@@ -42,12 +65,17 @@ class CursesInterface : UserInterface {
     move(promptLine,0)
     addstr(prompt)
     refresh()
-  }
-
-  func displayStatusBar() {
+    inputCol = Int32(prompt.characters.count)
   }
 
   func displayChatMessage(nick:String, message:String) {
+    if liny == errorLine {
+      for i in 0...errorLine {
+        self.clearline(i)
+      }
+      liny = 0
+    }
+    
     let displayString = "\(nick):  \(message)"
     let lock = NSLock()
     lock.lock()
@@ -71,7 +99,7 @@ class CursesInterface : UserInterface {
   func getInput() -> String {
     var input:String = ""
 
-    curx = 10
+    curx = inputCol
     move(promptLine, curx)
     refresh()
     while true {
@@ -79,8 +107,8 @@ class CursesInterface : UserInterface {
       let c  = Character(UnicodeScalar(ic))
       switch c {
       case self.backspace:
-        guard curx != 10 else { break }
-        curx -= 1; move(21, curx)
+        guard curx != inputCol else { break }
+        curx -= 1; move(promptLine, curx)
         delch()
         refresh()
         input = String(input.characters.dropLast())

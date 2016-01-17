@@ -26,6 +26,9 @@ import Foundation
 import Glibc
 import JSON
 
+public let DEFAULT_NICK = "genius17"
+public let DEFAULT_ROOM = "lobby"
+
 public enum ChatterMessageType:String {
        case Say   = "say"
        case Nick  = "nick"

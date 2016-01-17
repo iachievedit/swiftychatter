@@ -1,3 +1,27 @@
+// ChatterClient.swift
+//
+// The MIT License (MIT)
+//
+// Copyright (c) 2016 iAchieved.it LLC
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
 import chattercommon
 import Foundation
 import Glibc
@@ -10,6 +34,7 @@ case Send
 case Room    = "/room"
 case Nick    = "/nick"
 case Quit    = "/quit"
+case Connect = "/connect"
 }
 
 // Structs
@@ -20,9 +45,11 @@ struct Command {
 
 class ChatterClient {
 
+  var nick = DEFAULT_NICK
+  var room = DEFAULT_ROOM
   // Read-only computed property
   var prompt:String {
-    return "<>"
+    return "\(nick)@\(room) >"
   }
   
   private var serverIf:ServerInterface?
@@ -74,8 +101,10 @@ class ChatterClient {
     }
 
     switch tokens[0] {
+      
     case CommandType.Quit.rawValue:
       commandType = .Quit
+      
     case CommandType.Room.rawValue:
       guard tokens.count == 2 else {
         return Command(type:CommandType.Invalid,
@@ -83,6 +112,7 @@ class ChatterClient {
       }
       commandType = .Room
       commandData = tokens[1]
+      
     case CommandType.Nick.rawValue:
       guard tokens.count == 2 else {
         return Command(type:CommandType.Invalid,
@@ -90,6 +120,15 @@ class ChatterClient {
       }
       commandType = .Nick
       commandData = tokens[1]
+      
+    case CommandType.Connect.rawValue:
+      guard tokens.count == 2 else {
+        return Command(type:CommandType.Invalid,
+                       data:"Too few arguments for \(tokens[0])")
+      }
+      commandType = .Connect
+      commandData = tokens[1]
+
     default:
       guard tokens[0].characters.first != "/" else {
         return Command(type:CommandType.Invalid,
@@ -112,6 +151,8 @@ class ChatterClient {
       doRoom(command)
     case .Send:
       doSend(command)
+    case .Connect:
+      doConnect(command)
     case .Invalid:
       self.userIf.displayErrorMessage("Error:  \(command.data)")
     case .None:
@@ -120,8 +161,12 @@ class ChatterClient {
   }
 
   func doNick(command:Command) {
+    self.nick   = command.data
     let message = NickMessage(nick:command.data)
     self.serverIf!.send(message.serialize())
+
+    // Update our prompt
+    self.displayPrompt()
   }
 
   func doRoom(command:Command) {
@@ -132,6 +177,10 @@ class ChatterClient {
   func doSend(command:Command) {
     let message = SayMessage(message:command.data)
     self.serverIf!.send(message.serialize())
+  }
+
+  func doConnect(command:Command) {
+    self.serverIf!.connect(command.data)
   }
 
   func handleReceivedMessage(message:String) {

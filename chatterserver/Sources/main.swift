@@ -22,6 +22,16 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-if let server = ChatterServer() {
-  server.start()
-}
+import Commander
+
+command(Option("host", "localhost", description:"Host address"),
+        Option("port", 5555, description:  "Port number")) {
+  
+  host, port in
+
+  print("Starting up listening at \(host):\(port)")
+  
+  if let server = ChatterServer(host:host, port:port) {
+    server.start()
+  }
+}.run()

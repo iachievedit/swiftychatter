@@ -15,6 +15,9 @@ class ServerInterface {
     }
   }
 
+  func connect(server:String) {
+  }
+
   func send(message:String) {
     try! self.clientSocket.sendString("\(message)\n")
     try! self.clientSocket.flush()

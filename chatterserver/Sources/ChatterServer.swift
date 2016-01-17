@@ -33,9 +33,9 @@ class ChatterServer {
   private let ip:IP?
   private let server:TCPServerSocket?
 
-  init?() {
+  init?(host:String, port:Int) {
     do {
-      self.ip     = try IP(port:5555)
+      self.ip     = try IP(address:host, port:5555)
       self.server = try TCPServerSocket(ip:self.ip!)
     } catch let error {
       print(error)
