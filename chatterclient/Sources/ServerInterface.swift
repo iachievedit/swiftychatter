@@ -4,27 +4,43 @@ import swiftysockets
 // Talk to the server
 class ServerInterface {
 
-  private var clientSocket:TCPClientSocket
+  private var clientSocket:TCPClientSocket?
 
-  init?() {
-    do {
-      let ip            = try IP(port:5555)
-      self.clientSocket = try TCPClientSocket(ip:ip)
-    } catch {
-      return nil
+  init() {
+  }
+
+  func connect(server:String) -> Bool {
+    let tokens = server.characters.split{c in c == ":"}.map(String.init)
+
+    guard tokens.count == 2 else {
+      return false
+    }
+
+    let host = tokens[0]
+    if let port = Int(tokens[1]) {
+      do {
+        let ip            = try IP(address:host, port:port)
+        self.clientSocket = try TCPClientSocket(ip:ip)
+        return true
+      } catch {
+        return false
+      }
+    } else {
+      return false
     }
   }
 
-  func connect(server:String) {
-  }
-
   func send(message:String) {
-    try! self.clientSocket.sendString("\(message)\n")
-    try! self.clientSocket.flush()
+    try! self.clientSocket?.sendString("\(message)\n")
+    try! self.clientSocket?.flush()
   }
 
   func receive() -> String {
-    return try! self.clientSocket.receiveString(untilDelimiter:"\n")!
+    if let s = try! self.clientSocket?.receiveString(untilDelimiter:"\n") {
+      return s
+    } else {
+      return ""
+    }
   }
 
 }

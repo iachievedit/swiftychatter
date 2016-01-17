@@ -52,17 +52,16 @@ class ChatterClient {
     return "\(nick)@\(room) >"
   }
   
-  private var serverIf:ServerInterface?
+  private var serverIf:ServerInterface
   private var userIf:CursesInterface = CursesInterface()
   init() {
     self.serverIf = ServerInterface()
-    assert(self.serverIf != nil)
   }
 
   func start() {
     let receiveThread = NSThread(){
       while true {
-        let received = self.serverIf!.receive()
+        let received = self.serverIf.receive()
         self.handleReceivedMessage(received)
 
       }
@@ -163,7 +162,7 @@ class ChatterClient {
   func doNick(command:Command) {
     self.nick   = command.data
     let message = NickMessage(nick:command.data)
-    self.serverIf!.send(message.serialize())
+    self.serverIf.send(message.serialize())
 
     // Update our prompt
     self.displayPrompt()
@@ -171,16 +170,19 @@ class ChatterClient {
 
   func doRoom(command:Command) {
     let message = RoomMessage(room:command.data)
-    self.serverIf!.send(message.serialize())
+    self.serverIf.send(message.serialize())
   }
 
   func doSend(command:Command) {
     let message = SayMessage(message:command.data)
-    self.serverIf!.send(message.serialize())
+    self.serverIf.send(message.serialize())
   }
 
   func doConnect(command:Command) {
-    self.serverIf!.connect(command.data)
+    if self.serverIf.connect(command.data) {
+    } else {
+      self.userIf.displayErrorMessage("Error:  Could not connect to \(command.data)")
+    }
   }
 
   func handleReceivedMessage(message:String) {
