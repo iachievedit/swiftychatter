@@ -4,4 +4,6 @@ let client = ChatterClient()
 
 client.start()
 
-select(0, nil, nil, nil, nil)
+while true {
+  select(0, nil, nil, nil, nil)
+}

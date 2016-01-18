@@ -53,8 +53,12 @@ class ChatterClient {
   }
   
   private var serverIf:ServerInterface
-  private var userIf:CursesInterface = CursesInterface()
   init() {
+    userInterface = CursesInterface()
+    if userInterface == nil {
+      print("Unable to create user interface")
+      exit(0)
+    }
     self.serverIf = ServerInterface()
   }
 
@@ -70,10 +74,11 @@ class ChatterClient {
     
     let readThread = NSThread(){
 
-      self.displayPrompt()
+      userInterface!.setPrompt(self.prompt)
+      userInterface!.displayStatusBar()
 
       while true {
-        let input   = self.userIf.getInput()
+        let input   = userInterface!.getInput()
         let command = self.parseInput(input)
         self.doCommand(command)
         self.displayPrompt()
@@ -84,7 +89,8 @@ class ChatterClient {
   }
 
   func displayPrompt() {
-    self.userIf.displayPrompt(self.prompt)
+    userInterface!.setPrompt(self.prompt)
+    userInterface!.displayStatusBar()
   }
 
    func parseInput(input:String) -> Command {
@@ -142,7 +148,7 @@ class ChatterClient {
   func doCommand(command:Command) {
     switch command.type {
     case .Quit:
-      self.userIf.end()
+      userInterface!.end()
       exit(0)
     case .Nick:
       doNick(command)
@@ -153,7 +159,7 @@ class ChatterClient {
     case .Connect:
       doConnect(command)
     case .Invalid:
-      self.userIf.displayErrorMessage("Error:  \(command.data)")
+      userInterface!.displayErrorMessage("Error:  \(command.data)")
     case .None:
       break
     }
@@ -169,8 +175,12 @@ class ChatterClient {
   }
 
   func doRoom(command:Command) {
+    self.room = command.data
     let message = RoomMessage(room:command.data)
     self.serverIf.send(message.serialize())
+
+    // Update our prompt
+    self.displayPrompt()
   }
 
   func doSend(command:Command) {
@@ -180,8 +190,9 @@ class ChatterClient {
 
   func doConnect(command:Command) {
     if self.serverIf.connect(command.data) {
+      userInterface!.setConnection(command.data)
     } else {
-      self.userIf.displayErrorMessage("Error:  Could not connect to \(command.data)")
+      userInterface!.displayErrorMessage("Error:  Could not connect to \(command.data)")
     }
   }
 
@@ -215,7 +226,7 @@ class ChatterClient {
     if let data = json["data"],
        let nick = data["nick"]?.stringValue!,
        let message = data["message"]?.stringValue! {
-      self.userIf.displayChatMessage(nick, message:message)
+      userInterface!.displayChatMessage(nick, message:message)
     }
   }
 }

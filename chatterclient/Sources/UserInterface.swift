@@ -28,7 +28,7 @@ import CNCURSES
 
 protocol UserInterface {
 
-  func displayPrompt(prompt:String)
+  func displayStatusBar()
 
   func displayChatMessage(nick:String, message:String)
 
@@ -40,37 +40,123 @@ protocol UserInterface {
   
 }
 
+func getmaxyx(window window:UnsafeMutablePointer<WINDOW>, inout y:Int32, inout x:Int32) {
+  x = getmaxx(window)
+  y = getmaxy(window)
+}
+
+func getcuryx(window window:UnsafeMutablePointer<WINDOW>, inout y:Int32, inout x:Int32) {
+  x = getcurx(window)
+  y = getcury(window)
+}
+
+var userInterface:CursesInterface? = nil
+
 class CursesInterface : UserInterface {
 
-  // Class constant
   let delim:Character     = "\n"
   let backspace:Character = Character(UnicodeScalar(127))
-
+  let A_REVERSE = Int32(1 << 18)
+  let NotConnected = "Not Connected"
+  
   // Ncurses screen positions
-  var cury:Int32     = 0
-  var curx:Int32     = 0
+  var maxy:Int32 = 0 // Maximum number of lines
+  var maxx:Int32 = 0 // Maximum number of columns
+  var cury:Int32 = 0 // Current cursor line
+  var curx:Int32 = 0 // Current cursor column
+  
   var inputCol:Int32 = 0
-
-  let errorLine:Int32    = 21
-  let promptLine:Int32   = 22
-
-  private var liny:Int32 = 0
+  
+  var prompt:String = ""
+  var connection:String
+  
+  var statusLine:Int32 {
+    get {
+      return maxy - 2
+    }
+  }
+  var inputLine:Int32 {
+    get {
+      return maxy - 1
+    }
+  }
+  
+  var liny:Int32 = 0
+  
   init() {
     initscr()
     noecho()
     curs_set(1)
-  }
+    
+    self.connection = NotConnected
+    
+    trap(.INT){ s in
+      if let ui = userInterface {
+        ui.end()
+        exit(0)
+      }
+    }
+    
+    trap(.WINCH){ s in
+      if let ui = userInterface {
+        ui.resetUI()
+      }
+    }
 
-  func displayPrompt(prompt:String) {
-    move(promptLine,0)
-    addstr(prompt)
+    getmaxyx(window:stdscr, y:&maxy, x:&maxx)
+    
+   }
+
+   func resetUI() {
+     endwin()
+     refresh()
+     initscr()
+     clear()
+     curs_set(1)
+     self.getDisplaySize()
+     self.displayStatusBar()
+     self.displayInput()
+   }
+
+   func getDisplaySize() {
+    getmaxyx(window:stdscr, y:&maxy, x:&maxx)
+   }
+
+   func setPrompt(prompt:String) {
+    self.prompt = prompt
+    self.displayStatusBar()
+   }
+   func setConnection(connection:String) {
+    self.connection = connection
+    self.displayStatusBar()
+   }
+
+   func displayStatusBar() {
+
+    let promptLen = prompt.characters.count
+    let connLen   = connection.characters.count
+    let padLen    = maxx - promptLen - connLen
+
+    var statusBarString:String = prompt
+
+    for _ in 1...padLen {
+      statusBarString += " "
+    }
+
+    statusBarString += connection
+    
+    move(statusLine,0)
+    attron(A_REVERSE)
+    addstr(statusBarString)
+    attroff(A_REVERSE)
     refresh()
-    inputCol = Int32(prompt.characters.count)
+    //inputCol = Int32(prompt.characters.count)
   }
 
-  func displayChatMessage(nick:String, message:String) {
-    if liny == errorLine {
-      for i in 0...errorLine {
+   func displayChatMessage(nick:String, message:String) {
+    // Clear the screen
+    if liny == statusLine {
+      for i in 0...statusLine {
         self.clearline(i)
       }
       liny = 0
@@ -81,52 +167,62 @@ class CursesInterface : UserInterface {
     lock.lock()
     move(liny, 0); liny += 1
     addstr(displayString)
-    move(promptLine,curx)
+    move(inputLine,curx)
     refresh()
     lock.unlock()
   }
 
-  func displayErrorMessage(message:String) {
-    move(errorLine, 0)
+   func displayErrorMessage(message:String) {
+    move(statusLine, 0)
     addstr(message)
     refresh()
   }
 
-  func end() {
+   func end() {
     endwin()
   }
 
-  func getInput() -> String {
-    var input:String = ""
+   var input:String = ""
+   func getInput() -> String {
+     input = ""
+     curx = inputCol
+     move(inputLine, curx)
+     refresh()
+     while true {
+       let ic = UInt32(getch())
+       let c  = Character(UnicodeScalar(ic))
+       switch c {
+       case self.backspace:
+         guard curx != inputCol else { break }
+         curx -= 1; move(inputLine, curx)
+         delch()
+         refresh()
+         input = String(input.characters.dropLast())
+       case self.delim:
+         clearline(inputLine)
+         return input
+       default:
+         if isprint(Int32(ic)) != 0 {
+           addch(UInt(ic)); curx += 1
+           refresh()
+           input.append(c)
+         }
+       }
+     }
+   }
 
-    curx = inputCol
-    move(promptLine, curx)
-    refresh()
-    while true {
-      let ic = UInt32(getch())
-      let c  = Character(UnicodeScalar(ic))
-      switch c {
-      case self.backspace:
-        guard curx != inputCol else { break }
-        curx -= 1; move(promptLine, curx)
-        delch()
-        refresh()
-        input = String(input.characters.dropLast())
-      case self.delim:
-        self.clearline(promptLine)
-        return input
-      default:
-        addch(UInt(ic)); curx += 1
-        input.append(c)
-      }
-    }
-  }
-
-  private func clearline(lineno:Int32) {
-    move(lineno, 0)
-    clrtoeol()
-    refresh()
-  }
-
-
+   // Call after SIGWINCH
+   func displayInput() {
+     move(inputLine, 0)
+     addstr(input)
+     refresh()
+   }
+   
+   func clearline(lineno:Int32) {
+     move(lineno, 0)
+     clrtoeol()
+     refresh()
+   }
+   
+   
 }
