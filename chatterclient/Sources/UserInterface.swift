@@ -150,7 +150,6 @@ class CursesInterface : UserInterface {
     addstr(statusBarString)
     attroff(A_REVERSE)
     refresh()
-    //inputCol = Int32(prompt.characters.count)
   }
 
    func displayChatMessage(nick:String, message:String) {
@@ -173,9 +172,7 @@ class CursesInterface : UserInterface {
   }
 
    func displayErrorMessage(message:String) {
-    move(statusLine, 0)
-    addstr(message)
-    refresh()
+    displayChatMessage("system", message:message) 
   }
 
    func end() {

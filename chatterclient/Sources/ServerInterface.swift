@@ -27,9 +27,11 @@ import swiftysockets
 // Talk to the server
 class ServerInterface {
 
+  private(set) var connected:Bool
   private var clientSocket:TCPClientSocket?
 
   init() {
+    self.connected = false
   }
 
   func connect(server:String) -> Bool {
@@ -44,6 +46,7 @@ class ServerInterface {
       do {
         let ip            = try IP(address:host, port:port)
         self.clientSocket = try TCPClientSocket(ip:ip)
+        self.connected    = true
         return true
       } catch {
         return false

@@ -49,7 +49,7 @@ class ChatterClient {
   var room = DEFAULT_ROOM
   // Read-only computed property
   var prompt:String {
-    return "\(nick)@\(room) >"
+    return "\(nick)@\(room)"
   }
   
   private var serverIf:ServerInterface
@@ -74,21 +74,20 @@ class ChatterClient {
     
     let readThread = NSThread(){
 
-      userInterface!.setPrompt(self.prompt)
-      userInterface!.displayStatusBar()
+      self.updateStatusBar()
 
       while true {
         let input   = userInterface!.getInput()
         let command = self.parseInput(input)
         self.doCommand(command)
-        self.displayPrompt()
+        self.updateStatusBar()
       }
     }
 
     readThread.start()
   }
 
-  func displayPrompt() {
+  func updateStatusBar() {
     userInterface!.setPrompt(self.prompt)
     userInterface!.displayStatusBar()
   }
@@ -111,6 +110,10 @@ class ChatterClient {
       commandType = .Quit
       
     case CommandType.Room.rawValue:
+      guard self.serverIf.connected == true else {
+        return Command(type:CommandType.Invalid,
+                       data:"Not connected")
+      }
       guard tokens.count == 2 else {
         return Command(type:CommandType.Invalid,
                        data:"Too few arguments for \(tokens[0])")
@@ -119,6 +122,10 @@ class ChatterClient {
       commandData = tokens[1]
       
     case CommandType.Nick.rawValue:
+      guard self.serverIf.connected == true else {
+        return Command(type:CommandType.Invalid,
+                       data:"Not connected")
+      }
       guard tokens.count == 2 else {
         return Command(type:CommandType.Invalid,
                        data:"Too few arguments for \(tokens[0])")
@@ -138,6 +145,10 @@ class ChatterClient {
       guard tokens[0].characters.first != "/" else {
         return Command(type:CommandType.Invalid,
                        data:"No such command \(tokens[0])")
+      }
+      guard self.serverIf.connected == true else {
+        return Command(type:CommandType.Invalid,
+                       data:"Not connected")
       }
       commandType = .Send
       commandData = input
@@ -169,18 +180,12 @@ class ChatterClient {
     self.nick   = command.data
     let message = NickMessage(nick:command.data)
     self.serverIf.send(message.serialize())
-
-    // Update our prompt
-    self.displayPrompt()
   }
 
   func doRoom(command:Command) {
     self.room = command.data
     let message = RoomMessage(room:command.data)
     self.serverIf.send(message.serialize())
-
-    // Update our prompt
-    self.displayPrompt()
   }
 
   func doSend(command:Command) {
