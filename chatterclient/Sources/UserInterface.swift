@@ -52,12 +52,13 @@ func getcuryx(window window:UnsafeMutablePointer<WINDOW>, inout y:Int32, inout x
 
 var userInterface:CursesInterface? = nil
 
+let NotConnected = "Not Connected"
+
 class CursesInterface : UserInterface {
 
   let delim:Character     = "\n"
   let backspace:Character = Character(UnicodeScalar(127))
   let A_REVERSE = Int32(1 << 18)
-  let NotConnected = "Not Connected"
   
   // Ncurses screen positions
   var maxy:Int32 = 0 // Maximum number of lines
@@ -82,13 +83,16 @@ class CursesInterface : UserInterface {
   }
   
   var liny:Int32 = 0
-  
+
+  var buffer:CircularBuffer<String>?
+
   init() {
     initscr()
     noecho()
     curs_set(1)
     
     self.connection = NotConnected
+    buffer = CircularBuffer<String>(size:120)
     
     trap(.INT){ s in
       if let ui = userInterface {
@@ -102,41 +106,44 @@ class CursesInterface : UserInterface {
         ui.resetUI()
       }
     }
-
+    
     getmaxyx(window:stdscr, y:&maxy, x:&maxx)
     
-   }
+  }
 
-   func resetUI() {
+  func resetUI() {
      endwin()
      refresh()
      initscr()
      clear()
      curs_set(1)
+     liny = 0
      self.getDisplaySize()
      self.displayStatusBar()
      self.displayInput()
+     self.refreshChatMessages()
    }
 
-   func getDisplaySize() {
+  func getDisplaySize() {
     getmaxyx(window:stdscr, y:&maxy, x:&maxx)
-   }
-
-   func setPrompt(prompt:String) {
+  }
+  
+  func setPrompt(prompt:String) {
     self.prompt = prompt
     self.displayStatusBar()
-   }
-   func setConnection(connection:String) {
+  }
+  
+  func setConnection(connection:String = NotConnected) {
     self.connection = connection
     self.displayStatusBar()
-   }
-
-   func displayStatusBar() {
-
+  }
+  
+  func displayStatusBar() {
+    
     let promptLen = prompt.characters.count
     let connLen   = connection.characters.count
     let padLen    = maxx - promptLen - connLen
-
+    
     var statusBarString:String = prompt
 
     for _ in 1...padLen {
@@ -152,23 +159,38 @@ class CursesInterface : UserInterface {
     refresh()
   }
 
-   func displayChatMessage(nick:String, message:String) {
-    // Clear the screen
+  func displayChatMessage(nick:String, message:String) {
+    let displayString = "\(nick):  \(message)"
+    displayMessage(displayString)
+  }
+
+  func displayMessage(message:String, addToBuffer:Bool = true) {
+    // Clear the screen and
     if liny == statusLine {
-      for i in 0...statusLine {
+      for i in 0...statusLine-1 {
         self.clearline(i)
       }
       liny = 0
     }
     
-    let displayString = "\(nick):  \(message)"
     let lock = NSLock()
     lock.lock()
     move(liny, 0); liny += 1
-    addstr(displayString)
+    addstr(message)
+    if addToBuffer {
+      buffer?.writeNext(message)
+    }
     move(inputLine,curx)
     refresh()
     lock.unlock()
+  }
+
+  func refreshChatMessages() {
+    if let buf = buffer {
+      for message in buf {
+        self.displayMessage(message, addToBuffer:false)
+      }
+    }
   }
 
    func displayErrorMessage(message:String) {

@@ -61,11 +61,18 @@ class ServerInterface {
     try! self.clientSocket?.flush()
   }
 
-  func receive() -> String {
-    if let s = try! self.clientSocket?.receiveString(untilDelimiter:"\n") {
-      return s
-    } else {
-      return ""
+  func receive(inout message:String) -> Bool {
+    do {
+      if let s = try self.clientSocket?.receiveString(untilDelimiter:"\n") {
+        message = s
+      } else {
+        message = ""
+      }
+      return true
+    } catch {
+      // This usually means a server disconnect
+      self.connected = false
+      return false
     }
   }
 

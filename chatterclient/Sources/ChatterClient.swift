@@ -65,9 +65,18 @@ class ChatterClient {
   func start() {
     let receiveThread = NSThread(){
       while true {
-        let received = self.serverIf.receive()
-        self.handleReceivedMessage(received)
-
+        var received:String = ""
+        if self.serverIf.connected {
+          if self.serverIf.receive(&received) {
+            self.handleReceivedMessage(received)
+            
+          } else {
+            // Disconnected
+            userInterface!.setConnection()
+            userInterface!.displayErrorMessage("Error:  Lost connection to server")
+            self.updateStatusBar()
+          }
+        }
       }
     }
     receiveThread.start()

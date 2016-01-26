@@ -23,13 +23,16 @@
 // SOFTWARE.
 
 import Commander
+import swiftlog
+
+slogLevel = .Verbose
 
 command(Option("host", "localhost", description:"Host address"),
         Option("port", 5555, description:  "Port number")) {
   
   host, port in
 
-  print("Starting up listening at \(host):\(port)")
+  SLogVerbose("Starting up listening at \(host):\(port)")
   
   if let server = ChatterServer(host:host, port:port) {
     server.start()

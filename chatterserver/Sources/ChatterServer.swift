@@ -23,10 +23,10 @@
 // SOFTWARE.
 
 import swiftysockets
+import swiftlog
 import chattercommon
 import Foundation
 import JSON
-import Rainbow
 
 class ChatterServer {
 
@@ -38,7 +38,7 @@ class ChatterServer {
       self.ip     = try IP(address:host, port:5555)
       self.server = try TCPServerSocket(ip:self.ip!)
     } catch let error {
-      print(error)
+      SLogError("\(error)")
       return nil
     }
   }
@@ -50,7 +50,7 @@ class ChatterServer {
         let client       = ChatterClient(socket:clientSocket)
         self.addClient(client)
       } catch let error {
-        print(error)
+        SLogError("\(error)")
       }
     }
   }
@@ -62,17 +62,17 @@ class ChatterServer {
     let handlerThread = NSThread(){
       client.id = self.connectionCount
       
-      print("Client \(client.id) connected")
+      SLogInfo("Client \(client.id) connected")
       
       while true {
         do {
           if let s = try client.socket.receiveString(untilDelimiter: "\n") {
-            print("Received from client \(client.id):  \(s)", terminator:"")
+            SLogVerbose("Received from client \(client.id):  \(s)")
             self.handleMessage(s, fromClient:client)
 
           }
         } catch let error {
-          print ("Client \(client.id) disconnected:  \(error)")
+          SLogInfo("Client \(client.id) disconnected:  \(error)")
           self.removeClient(client)
           return
         }
@@ -115,7 +115,7 @@ class ChatterServer {
       let say     = SayMessage(message:message, nick:client.nick)
       self.broadcastSayMessage(say, from:client)
     } else {
-      print("Unable to parse client say message".red)
+      SLogWarning("Unable to parse client say message".red)
     }
   }
 
@@ -124,7 +124,7 @@ class ChatterServer {
        let nick = data["nick"]?.stringValue {
       fromClient.nick = nick
     } else {
-      print("Unable to parse client nick message".red)
+      SLogWarning("Unable to parse client nick message".red)
     }
   }
 
@@ -133,13 +133,13 @@ class ChatterServer {
        let room = data["room"]?.stringValue {
       client.room = room
     } else {
-      print("Unable to parse client room message".red)
+      SLogWarning("Unable to parse client room message".red)
     }
   }
 
   private func broadcastSayMessage(say:SayMessage, from client:ChatterClient) {
     for c in connectedClients where c.room == client.room {
-      print("Broadcast to client")
+      SLogVerbose("Broadcast to client")
       c.sendMessage(say)
     }
   }

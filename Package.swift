@@ -24,6 +24,8 @@ let package = Package(
       .Package(url:"https://github.com/iachievedit/CNCURSES",
                majorVersion:1),
       .Package(url:"https://github.com/kylef/Commander",
-               majorVersion:0, minor:4)
+               majorVersion:0, minor:4),
+      .Package(url:"https://github.com/iachievedit/swiftlog",
+               majorVersion:1)
     ]
 )
