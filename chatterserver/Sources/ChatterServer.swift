@@ -132,6 +132,9 @@ class ChatterServer {
     if let data = json["data"],
        let room = data["room"]?.stringValue {
       client.room = room
+
+      let enter = EnterMessage(nick:client.nick, room:room)
+      self.broadcastEnterMessage(enter, from:client)
     } else {
       SLogWarning("Unable to parse client room message".red)
     }
@@ -141,6 +144,14 @@ class ChatterServer {
     for c in connectedClients where c.room == client.room {
       SLogVerbose("Broadcast to client")
       c.sendMessage(say)
+    }
+  }
+  
+  private func broadcastEnterMessage(enter:EnterMessage,
+                                     from client:ChatterClient) {
+    for c in connectedClients where c.room == client.room {
+      SLogVerbose("Broadcast enter message to clients")
+      c.sendMessage(enter)
     }
   }
 

@@ -5,6 +5,9 @@
 //  Created by Tomasz Piekarczyk on 29/11/14.
 //  Copyright (c) 2014 Tomasz Piekarczyk. All rights reserved.
 //
+//  Source retrieved by iAchieved.it LLC from this repository
+//  https://github.com/tomaszpiekarczyk/CircularBuffer which is marked with a
+//  MIT License.  
 
 //TODO: subscript
 //TODO: redesign so that reading does not consume elements (this will make it concise with enumeration

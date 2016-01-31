@@ -122,6 +122,7 @@ public class SayMessage : ChatterMessage {
   
 }
 
+// A message indicating that a client has entered a given room
 public class EnterMessage : ChatterMessage {
 
   public let msgtype = "enter"

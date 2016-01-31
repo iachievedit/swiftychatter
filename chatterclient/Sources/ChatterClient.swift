@@ -225,7 +225,7 @@ class ChatterClient {
         case .Nick:
           break
         case .Enter:
-          break
+          self.handleEnterMessage(json)
         case .Room:
           break
         }
@@ -241,6 +241,14 @@ class ChatterClient {
        let nick = data["nick"]?.stringValue!,
        let message = data["message"]?.stringValue! {
       userInterface!.displayChatMessage(nick, message:message)
+    }
+  }
+
+  func handleEnterMessage(json:JSON) {
+    if let data = json["data"],
+       let nick = data["nick"]?.stringValue!,
+       let room = data["room"]?.stringValue! {
+      userInterface!.displayEnterMessage(nick, room:room)
     }
   }
 }

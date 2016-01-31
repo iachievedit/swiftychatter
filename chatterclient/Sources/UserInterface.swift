@@ -27,17 +27,11 @@ import Glibc
 import CNCURSES
 
 protocol UserInterface {
-
   func displayStatusBar()
-
   func displayChatMessage(nick:String, message:String)
-
   func displayErrorMessage(message:String)
-
   func getInput() -> String
-
   func end()
-  
 }
 
 func getmaxyx(window window:UnsafeMutablePointer<WINDOW>, inout y:Int32, inout x:Int32) {
@@ -58,7 +52,7 @@ class CursesInterface : UserInterface {
 
   let delim:Character     = "\n"
   let backspace:Character = Character(UnicodeScalar(127))
-  let A_REVERSE = Int32(1 << 18)
+  let A_REVERSE           = Int32(1 << 18)
   
   // Ncurses screen positions
   var maxy:Int32 = 0 // Maximum number of lines
@@ -164,15 +158,22 @@ class CursesInterface : UserInterface {
     displayMessage(displayString)
   }
 
+  func displayEnterMessage(nick:String, room:String) {
+    let displayString = "\(nick) has entered \(room)."
+    displayMessage(displayString)
+  }
+
   func displayMessage(message:String, addToBuffer:Bool = true) {
-    // Clear the screen and
+    
     if liny == statusLine {
+      // We've reached the end of the chat screen, so clear all
+      // lines and reset liny to 0 (top line)
       for i in 0...statusLine-1 {
         self.clearline(i)
       }
       liny = 0
     }
-    
+
     let lock = NSLock()
     lock.lock()
     move(liny, 0); liny += 1
@@ -201,47 +202,45 @@ class CursesInterface : UserInterface {
     endwin()
   }
 
-   var input:String = ""
-   func getInput() -> String {
-     input = ""
-     curx = inputCol
-     move(inputLine, curx)
-     refresh()
-     while true {
-       let ic = UInt32(getch())
-       let c  = Character(UnicodeScalar(ic))
-       switch c {
-       case self.backspace:
-         guard curx != inputCol else { break }
-         curx -= 1; move(inputLine, curx)
-         delch()
-         refresh()
-         input = String(input.characters.dropLast())
-       case self.delim:
-         clearline(inputLine)
-         return input
-       default:
-         if isprint(Int32(ic)) != 0 {
-           addch(UInt(ic)); curx += 1
-           refresh()
-           input.append(c)
-         }
-       }
-     }
-   }
-
-   // Call after SIGWINCH
-   func displayInput() {
-     move(inputLine, 0)
-     addstr(input)
-     refresh()
-   }
-   
-   func clearline(lineno:Int32) {
-     move(lineno, 0)
-     clrtoeol()
-     refresh()
-   }
-   
-   
+  var input:String = ""
+  func getInput() -> String {
+    input = ""
+    curx = inputCol
+    move(inputLine, curx)
+    refresh()
+    while true {
+      let ic = UInt32(getch())
+      let c  = Character(UnicodeScalar(ic))
+      switch c {
+      case self.backspace:
+        guard curx != inputCol else { break }
+        curx -= 1; move(inputLine, curx)
+        delch()
+        refresh()
+        input = String(input.characters.dropLast())
+      case self.delim:
+        clearline(inputLine)
+        return input
+      default:
+        if isprint(Int32(ic)) != 0 {
+          addch(UInt(ic)); curx += 1
+          refresh()
+          input.append(c)
+        }
+      }
+    }
+  }
+  
+  // Call after SIGWINCH
+  func displayInput() {
+    move(inputLine, 0)
+    addstr(input)
+    refresh()
+  }
+  
+  func clearline(lineno:Int32) {
+    move(lineno, 0)
+    clrtoeol()
+    refresh()
+  }
 }
